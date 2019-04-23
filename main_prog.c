@@ -44,7 +44,7 @@ void clientProc();
 void updateDB();
 void rcv_cl_qry();
 void bcastIR();
-// void send_qry();
+void send_qry();
 // void rcv_sv_IR();
 msg_t build_msg();
 
@@ -126,7 +126,7 @@ void rcv_cl_qry()
 
 void bcastIR()
 {
-    printf("found here----------------------");
+    printf("\n found here---------------------- \n");
     long i;
     msg_t irData;
     irData = build_msg(0);
@@ -136,6 +136,11 @@ void bcastIR()
         send(node[i].mailbox, (long)irData);
     }
     status_mailboxes();
+}
+
+void send_qry()
+{
+
 }
 
 msg_t build_msg(n) long n;
