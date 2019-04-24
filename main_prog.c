@@ -6,6 +6,7 @@
 #define SERVERS 1L
 #define NODES 11L
 #define SIMTIME 100.0
+#define CACHE 100L
 
 typedef struct msg *msg_t;
 
@@ -29,6 +30,22 @@ struct s_node
     long bcast_data[DATABASE];   //Lbcast
 } server;
 
+struct cdata
+{
+    long valid_bit;
+    long data_item_id;
+    double last_updated;
+    double last_accessed;
+};
+
+struct c_node
+{
+    struct cdata cache[CACHE];
+    double last_interval_timestamp;
+    long req_data[DATABASE];
+};
+
+struct c_node clientNodes[CLIENTS];
 msg_t msg_queue;
 
 struct nde
@@ -45,7 +62,7 @@ void updateDB();
 void rcv_cl_qry();
 void bcastIR();
 void send_qry();
-// void rcv_sv_IR();
+void rcv_sv_IR();
 msg_t build_msg();
 
 void send_msg();
@@ -76,7 +93,7 @@ void init()
     }
 
     serverProc();
-    // clientProc();
+    clientProc();
 }
 
 void serverProc()
@@ -88,17 +105,17 @@ void serverProc()
 
 void updateDB()
 {
-    double rand;
-    long udata;
+    double uProb;
+    long rand;
     //create("updateProcess");
     //hold(50.0);
     while (clock < SIMTIME)
     {
-        rand = random(0, 1);
-        udata = (rand < 0.33) ? uniform(1, 50) : uniform(51, 1000);
+        uProb = uniform(0.0, 1.0);
+        rand = (uProb < 0.33) ? random(1, 50) : random(51, 1000);
         {
-            server.data_items[udata] = clock;
-            server.bcast_data[udata] = udata;
+            server.data_items[rand] = clock;
+            server.bcast_data[rand] = rand;
         }
         hold(2.0);
     }
@@ -126,7 +143,7 @@ void rcv_cl_qry()
 
 void bcastIR()
 {
-    printf("\n found here---------------------- \n");
+    printf("found here----------------------");
     long i;
     msg_t irData;
     irData = build_msg(0);
@@ -138,15 +155,40 @@ void bcastIR()
     status_mailboxes();
 }
 
+void clientProc()
+{
+    send_qry();
+}
+
 void send_qry()
 {
+    printf("\n Found here in client too --------------------------________________________++++++++++++++++++++++");
+    long i, j, k;
+    msg_t query;
+    for (i = 0; i < CLIENTS; i++)
+    {
+        query = build_msg(1);
+        for (j = 0; j < CACHE; j++)
+        {
+            k = clientNodes[i].cache[j].data_item_id;
+            if (k == query->data_id)
+            {
+            }
+        }
+        send(node[CLIENTS].mailbox, (long)query);
+    }
+    status_mailboxes();
+}
 
+void rcv_sv_IR()
+{
 }
 
 msg_t build_msg(n) long n;
 {
     msg_t mes;
-    long i;
+    double aProb;
+    long i, rand;
     if (msg_queue == NIL)
     {
         mes = (msg_t)do_malloc(sizeof(struct msg));
@@ -166,7 +208,9 @@ msg_t build_msg(n) long n;
     }
     else
     {
-        mes->data_id = 2;
+        aProb = uniform(0.0, 1.0);
+        rand = (aProb < 0.8) ? random(1, 50) : random(51, 1000);
+        mes->data_id = rand;
     }
     return mes;
 }
