@@ -1,20 +1,14 @@
 #include "csim.h"
 #include <stdio.h>
 
-#define DATABASE 10L
-#define CLIENTS 10L
+#define DATABASE 1000L
+#define CLIENTS 100L
 #define SERVERS 1L
-#define NODES 11L
-#define SIMTIME 1000.0
-#define CACHE 10L
+#define NODES 101L
+#define SIMTIME 100.0
+#define CACHE 100L
 
 typedef struct msg *msg_t;
-
-struct data_tuple
-{
-    long data_id;
-    double data_ts;
-};
 
 struct msg
 {
@@ -81,9 +75,9 @@ void init()
     char str[24];
     max_servers(SERVERS * SERVERS + SERVERS);
     max_mailboxes(NODES * NODES + NODES);
-    max_events(2 * NODES * NODES);
-    max_messages(1000);
-    max_processes(10000);
+    max_events(NODES * NODES * NODES);
+    max_messages(NODES * NODES * NODES);
+    max_processes(NODES * NODES * NODES);
 
     msg_queue = NIL;
 
@@ -99,7 +93,7 @@ void init()
 
 void serverProc()
 {
-
+    printf("\n ************************************ SERVER functionality in progress ************************************");
     create("server");
     while (clock < SIMTIME)
     {
@@ -112,6 +106,7 @@ void serverProc()
 
 void updateDB()
 {
+    printf("\n ************************************ Server Update Initiated ************************************");
     double uProb;
     long rand;
     create("update");
@@ -119,53 +114,43 @@ void updateDB()
     {
         hold(expntl(20.0));
         uProb = uniform(0.0, 1.0);
-        rand = (uProb < 0.33) ? random(1, 5) : random(6, 10);
+        printf("\n The Update probability is %lf", uProb);
+        if (uProb < 0.33)
         {
-            server.data_items[rand] = clock;
-            server.bcast_data[rand] = rand;
+            rand = uniform(1, 51);
+            printf("\n Hot data item %ld picked for update", rand);
         }
+        else
+        {
+            rand = uniform(51, 1000);
+            printf("\n Cold data item %ld picked for update", rand);
+        }
+
+        server.data_items[rand] = clock;
+        server.bcast_data[rand] = rand;
+        printf("\n The data is updated at position %ld with the updated time %lf", rand, server.data_items[rand]);
     }
 }
 
-// void rcv_cl_qry()
-// {
-//     long cnt = 0;
-//     long i;
-//     create("recli");
-//     while (clock < SIMTIME)
-//     {
-//         hold(expntl(10.0));
-//         msg_t cl_msg;
-//         cl_msg = build_msg(1);
-//         send(node[CLIENTS].mailbox, (long)cl_msg);
-//         status_mailboxes();
-//         cnt = msg_cnt(node[CLIENTS].mailbox);
-//         if (cnt > 0)
-//         {
-//             for (i = 0; i < cnt; i++)
-//             {
-//                 receive(node[CLIENTS].mailbox, (long *)&cl_msg);
-//                 server.bcast_data[cl_msg->data_id] = cl_msg->data_id;
-//             }
-//         }
-//     }
-// }
-
 void rcv_cl_qry()
 {
-    long cnt = 0;
-    long i;
-    msg_t cl_msg;
-    cl_msg = build_msg(1);
-    send(node[CLIENTS].mailbox, (long)cl_msg);
-    status_mailboxes();
-    cnt = msg_cnt(node[CLIENTS].mailbox);
-    if (cnt > 0)
+    create("recli");
+    while (clock < SIMTIME)
     {
-        for (i = 0; i < cnt; i++)
+        hold(expntl(10.0));
+        long i, cnt = 0;
+        msg_t cl_msg;
+        cnt = msg_cnt(node[CLIENTS].mailbox);
+        printf("\n The Servers Mailbox has %ld requests from clients", cnt);
+        if (cnt > 0)
         {
-            receive(node[CLIENTS].mailbox, (long *)&cl_msg);
-            server.bcast_data[cl_msg->data_id] = cl_msg->data_id;
+            for (i = 0; i < cnt; i++)
+            {
+                receive(node[CLIENTS].mailbox, (long *)&cl_msg);
+                printf("\n The requested data item from client is %ld", cl_msg->data_id);
+                server.bcast_data[cl_msg->data_id] = cl_msg->data_id;
+                printf("\n The requested data item is stored in Lbcast at position %ld with data request id %ld", cl_msg->data_id, server.bcast_data[cl_msg->data_id]);
+            }
         }
     }
 }
@@ -182,7 +167,6 @@ void bcastIR()
         {
             for (j = 1; j <= DATABASE; j++)
             {
-                printf("\n %ld 0------------%lf------------------------- %3.3f \n", server.bcast_data[j], server.data_items[j], irData->timestamp);
                 irData = build_msg(0);
                 irData->timestamp = clock;
                 irData->data_id = server.bcast_data[j];
@@ -207,7 +191,6 @@ void clientProc()
 
 void send_qry()
 {
-    printf("\n Found here in client too --------------------------________________________++++++++++++++++++++++");
     long i, j, k;
     long hit, miss;
     create("send");
@@ -271,8 +254,6 @@ void rcv_sv_IR()
                         {
                             break;
                         }
-
-                        // lru_id, last_accessed = (clientNodes[i].cache[k].last_accessed > last_accessed) ? k, clientNodes[i].cache[k].last_accessed : lru_id, last_accessed;
                     }
                     for (k = 0; k < CACHE; k++)
                     {
@@ -300,7 +281,8 @@ void rcv_sv_IR()
         }
     }
 }
-msg_t build_msg(n, o) long n;
+
+msg_t build_msg(n) long n;
 {
     msg_t mes;
     double aProb;
@@ -317,7 +299,7 @@ msg_t build_msg(n, o) long n;
     if (n > 0)
     {
         aProb = uniform(0.0, 1.0);
-        rand = (aProb < 0.8) ? uniform(1, 5) : uniform(6, 10);
+        rand = (aProb < 0.8) ? uniform(1, 50) : uniform(51, 1000);
         mes->data_id = rand;
     }
     return mes;
