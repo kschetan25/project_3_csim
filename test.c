@@ -8,6 +8,9 @@
 #define SIMTIME 5000.0
 #define CACHE 100L
 
+double mean_uat;
+double mean_qgt;
+
 typedef struct msg *msg_t;
 
 struct msg
@@ -38,6 +41,8 @@ struct c_node
     double last_interval_timestamp;
     long cacheFull;
     long req_data[DATABASE];
+    long hit;
+    long miss;
 };
 
 struct c_node clientNodes[CLIENTS];
@@ -82,6 +87,11 @@ void init()
     max_messages(10 * NODES * NODES * NODES);
     max_processes(10 * NODES * NODES * NODES);
 
+    printf("\n What is the Mean Update Arrival Time you Desire ? (1 - 10000) : ");
+    scanf("\n %lf", &mean_uat);
+    printf("\n What is the mean Query Genertate time you Desire ? (50 - 300) items :");
+    scanf("\n %lf", &mean_qgt);
+
     msg_queue = NIL;
 
     for (i = 0; i < NODES; i++)
@@ -103,6 +113,8 @@ void printCache()
         {
             printf("\n Client %ld has cache item %ld at position %ld", i, clientNodes[i].cache[k].data_item_id, k);
         }
+        printf("\n Cache Hit : %ld", clientNodes[i].hit);
+        printf("\n Cache Miss : %ld", clientNodes[i].miss);
         printf("\n ------------------------------------------------------------------------------------------ \n");
     }
 }
@@ -126,7 +138,7 @@ void updateDB()
     create("update");
     while (clock < SIMTIME)
     {
-        hold(expntl(20.0));
+        hold(expntl(mean_uat));
         uProb = uniform(0.0, 1.0);
         printf("\n The Update probability is %lf", uProb);
         if (uProb < 0.33)
@@ -215,34 +227,37 @@ void clientProc()
 void send_qry()
 {
     long i, j, k;
-    long hit, miss;
+    long found;
     msg_t query;
     create("send");
     while (clock < SIMTIME)
     {
-        hold(expntl(20.0));
+        hold(expntl(mean_qgt));
         for (i = 0; i < CLIENTS; i++)
         {
             query = build_msg(1);
+
             printf("\n The client %ld queried for data item with id %ld at %3.3f", i, query->data_id, clock);
+            found = 0;
             for (j = 0; j < CACHE; j++)
             {
                 k = clientNodes[i].cache[j].data_item_id;
                 if (k == query->data_id)
                 {
                     printf("\n The queried data was found in cache at location %ld, waiting for next IR to validate the data at %3.3f", j, clock);
-                    hit++;
                     clientNodes[i].cache[j].last_accessed = clock;
                     clientNodes[i].req_data[query->data_id] = query->data_id;
+                    found = 1;
                 }
                 else
                 {
                     printf("\n The queried data was not found, sending a request for data with id %ld to server at %3.3f", query->data_id, clock);
-                    miss++;
                     send(node[CLIENTS].mailbox, (long)query);
                     break;
                 }
             }
+            if (clientNodes[i].cacheFull == 1)
+                (found == 1) ? (clientNodes[i].hit += 1) : (clientNodes[i].miss += 1);
         }
     }
 }
@@ -255,7 +270,7 @@ void rcv_sv_IR()
     create("rcv");
     while (clock < SIMTIME)
     {
-        hold(expntl(1));
+        hold(expntl(10.0));
         msg_t sv_msg;
         for (i = 0; i < CLIENTS; i++)
         {
