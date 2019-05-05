@@ -2,10 +2,10 @@
 #include <stdio.h>
 
 #define DATABASE 1000L
-#define CLIENTS 10L
+#define CLIENTS 100L
 #define SERVERS 1L
-#define NODES 11L
-#define SIMTIME 5000.0
+#define NODES 101L
+#define SIMTIME 50000.0
 #define CACHE 100L
 
 double mean_uat;
@@ -89,7 +89,7 @@ void init()
 
     printf("\n What is the Mean Update Arrival Time you Desire ? (1 - 10000) : ");
     scanf("\n %lf", &mean_uat);
-    printf("\n What is the mean Query Genertate time you Desire ? (50 - 300) items :");
+    printf("\n What is the mean Query Genertate time you Desire ? (50 - 300) :");
     scanf("\n %lf", &mean_qgt);
 
     msg_queue = NIL;
@@ -106,7 +106,8 @@ void init()
 
 void printCache()
 {
-    long i, k;
+    long i, k, totalHits, totalMiss;
+    double hit_ratio;
     for (i = 0; i < CLIENTS; i++)
     {
         for (k = 0; k < CACHE; k++)
@@ -116,7 +117,13 @@ void printCache()
         printf("\n Cache Hit : %ld", clientNodes[i].hit);
         printf("\n Cache Miss : %ld", clientNodes[i].miss);
         printf("\n ------------------------------------------------------------------------------------------ \n");
+        totalHits += clientNodes[i].hit;
+        totalMiss += clientNodes[i].miss;
     }
+    hit_ratio = totalHits / (CLIENTS - 1);
+    printf("\n The total cache hits are : %ld", totalHits);
+    printf("\n The total cache Misses are : %ld", totalMiss);
+    printf("\n The cache Hit ratio is : %lf", hit_ratio);
 }
 
 void serverProc()
@@ -202,7 +209,7 @@ void bcastIR()
                     irData->data_id = server.bcast_data[j];
                     irData->data_ts = server.data_items[j];
                     send(node[i].mailbox, (long)irData);
-                    hold(0.8);
+                    // hold(0.8);
                 }
             }
         }
