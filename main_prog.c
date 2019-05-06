@@ -5,7 +5,7 @@
 #define CLIENTS 100L
 #define SERVERS 1L
 #define NODES 101L
-#define SIMTIME 50000.0
+#define SIMTIME 10000.0
 #define CACHE 100L
 
 double mean_uat;
@@ -106,8 +106,8 @@ void init()
 
 void printCache()
 {
-    long i, k, totalHits, totalMiss;
-    double hit_ratio;
+    long i, k, totalHits = 0, totalMiss = 0;
+    double hit_ratio = 0.0;
     for (i = 0; i < CLIENTS; i++)
     {
         for (k = 0; k < CACHE; k++)
@@ -120,7 +120,7 @@ void printCache()
         totalHits += clientNodes[i].hit;
         totalMiss += clientNodes[i].miss;
     }
-    hit_ratio = totalHits / (CLIENTS - 1);
+    hit_ratio = (totalHits / (totalHits + totalMiss));
     printf("\n The total cache hits are : %ld", totalHits);
     printf("\n The total cache Misses are : %ld", totalMiss);
     printf("\n The cache Hit ratio is : %lf", hit_ratio);
@@ -334,7 +334,7 @@ void rcv_sv_IR()
                             clientNodes[i].cache[lru_id].last_updated = sv_msg->data_ts;
                             clientNodes[i].cache[lru_id].last_accessed = clock;
                             printf("\n Cache full for client %ld", i);
-                            printf("Applying LRU policy to insert the new data item with id %ld in the cache at %ld position at %3.3f", i, clientNodes[i].cache[lru_id].data_item_id, lru_id, clock);
+                            printf("\n Applying LRU policy to insert the new data item with id %ld in the cache at %ld position at %3.3f", i, clientNodes[i].cache[lru_id].data_item_id, lru_id, clock);
                         }
                     }
                 }
